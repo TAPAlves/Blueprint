@@ -1,37 +1,36 @@
 blueprint:
-  name:Unavailable entity detection & notification (on change)
-  description:Triggers when any entity becomes unavailable, with optional exclusions.
-  domain:automation
+  name: Unavailable entity detection & notification (on change)
+  description: Triggers when any entity becomes unavailable, with optional exclusions.
+  domain: automation
   input:
     exclude:
-      name:Excluded Entities
-      description:Entities (e.g. smartphone) to exclude from detection. Only entities are supported.
-      default:
-        entity_id:[]
+      name: Excluded Entities
+      description: Entities (e.g. smartphone) to exclude from detection. Only entities are supported.
+      default: []
       selector:
-        target:
-          entity:{}
+        entity: {}
     actions:
-      name:Actions
-      description:Notifications or similar to be run. {{ entity_id }} is replaced with the affected entity.
+      name: Actions
+      description: Notifications or similar to be run. {{ entity_id }} is replaced with the affected entity.
       selector:
-        action:{}
-  source_url:https://github.com/mmichon/blueprints_repo/blob/master/unavailable_entities_notification/unavailable_entities_notification.yaml
+        action: {}
+  source_url: https://github.com/mmichon/blueprints_repo/blob/master/unavailable_entities_notification/unavailable_entities_notification.yaml
 
 variables:
-  entity_id:'{{ trigger.entity_id }}'
-  exclude:!input exclude
+  entity_id: '{{ trigger.entity_id }}'
+  exclude: !input exclude
 
 trigger:
-- platform:state
-  from:~
-  to:'unavailable'
+  - platform: state
+    from: ~
+    to: 'unavailable'
 
 condition:
-- '{{ trigger.entity_id not in exclude.entity_id }}'
+  - condition: template
+    value_template: '{{ trigger.entity_id not in exclude }}'
 
 action:
-- choose:[]
-  default:!input actions
+  - choose: []
+    default: !input actions
 
-mode:single
+mode: single
