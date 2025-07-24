@@ -1,36 +1,42 @@
 blueprint:
-  name: Notificação de Entidade Indisponível
-  description: Envia notificação para o telemóvel quando qualquer entidade fica indisponível. Ideal para Shelly.
+  name: Shelly unavailability detection & notification
+  description: Notifies immediately when any Shelly entity becomes unavailable.
   domain: automation
   input:
-    notify_device:
-      name: Dispositivo para notificação
-      description: Escolha o telemóvel para o qual enviar a notificação
+    exclude:
+      name: Excluded Entities
+      description: Shelly entities to exclude from detection. Only entities are supported, devices must be expanded!
+      default:
+        entity_id: []
       selector:
-        device:
-          integration: mobile_app
-    exclude_entities:
-      name: Entidades a excluir (opcional)
-      description: Entidades que não devem gerar notificação
-      default: []
+        target:
+          entity: {}
+    actions:
+      name: Actions
+      description: Notifications or similar to be run. {{entities}} is replaced with the names of Shelly entities currently unavailable.
       selector:
-        entity: {}
-
+        action: {}
+  source_url: https://github.com/TAPAlves/Blueprint
+variables:
+  exclude: !input exclude
+  entities: >-
+    {% set result = namespace(unavailable=[]) %}
+    {% for state in states if state.entity_id.startswith('shelly') and state.state == 'unavailable' and state.entity_id not in exclude.entity_id %}
+      {% set result.unavailable = result.unavailable + [state.name] %}
+    {% endfor %}
+    {{ result.unavailable | join(', ') }}
 trigger:
-  - platform: state
-    from: ~
-    to: 'unavailable'
-
+  - platform: template
+    value_template: >-
+      {{ states
+        | selectattr('entity_id', 'search', '^shelly')
+        | selectattr('state', 'eq', 'unavailable')
+        | rejectattr('entity_id', 'in', exclude.entity_id)
+        | list
+        | count > 0 }}
 condition:
-  # Exclui entidades selecionadas
-  - condition: template
-    value_template: >
-      {{ trigger.entity_id not in iif(is_defined(exclude_entities), exclude_entities, []) }}
-
+  - '{{ entities != "" }}'
 action:
-  - service: notify.mobile_app_{{ device_attr(notify_device, 'name')|lower|replace(' ', '_') }}
-    data:
-      message: "A entidade {{ trigger.to_state.name or trigger.entity_id }} ficou indisponível!"
-      title: "Entidade indisponível!"
-
+  - choose: []
+    default: !input actions
 mode: single
