@@ -1,24 +1,20 @@
 blueprint:
-  name: Unavailable entity detection & notification (on change)
-  description: Triggers when any entity becomes unavailable, with optional exclusions.
+  name: Notificação de Entidade Indisponível
+  description: Envia notificação para o telemóvel quando qualquer entidade fica indisponível. Ideal para Shelly.
   domain: automation
   input:
-    exclude:
-      name: Excluded Entities
-      description: Entities (e.g. smartphone) to exclude from detection. Only entities are supported.
+    notify_device:
+      name: Dispositivo para notificação
+      description: Escolha o telemóvel para o qual enviar a notificação
+      selector:
+        device:
+          integration: mobile_app
+    exclude_entities:
+      name: Entidades a excluir (opcional)
+      description: Entidades que não devem gerar notificação
       default: []
       selector:
         entity: {}
-    actions:
-      name: Actions
-      description: Notifications or similar to be run. {{ entity_id }} is replaced with the affected entity.
-      selector:
-        action: {}
-  source_url: https://github.com/mmichon/blueprints_repo/blob/master/unavailable_entities_notification/unavailable_entities_notification.yaml
-
-variables:
-  entity_id: '{{ trigger.entity_id }}'
-  exclude: !input exclude
 
 trigger:
   - platform: state
@@ -26,11 +22,15 @@ trigger:
     to: 'unavailable'
 
 condition:
+  # Exclui entidades selecionadas
   - condition: template
-    value_template: '{{ trigger.entity_id not in exclude }}'
+    value_template: >
+      {{ trigger.entity_id not in iif(is_defined(exclude_entities), exclude_entities, []) }}
 
 action:
-  - choose: []
-    default: !input actions
+  - service: notify.mobile_app_{{ device_attr(notify_device, 'name')|lower|replace(' ', '_') }}
+    data:
+      message: "A entidade {{ trigger.to_state.name or trigger.entity_id }} ficou indisponível!"
+      title: "Entidade indisponível!"
 
 mode: single
