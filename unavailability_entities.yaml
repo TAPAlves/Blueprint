@@ -28,10 +28,11 @@ variables:
 trigger:
   - platform: template
     value_template: >-
+      {% set exclude_ids = exclude.entity_id if exclude is defined else [] %}
       {{ states
         | selectattr('entity_id', 'search', '^shelly')
         | selectattr('state', 'eq', 'unavailable')
-        | rejectattr('entity_id', 'in', exclude.entity_id)
+        | rejectattr('entity_id', 'in', exclude_ids)
         | list
         | count > 0 }}
 condition:
